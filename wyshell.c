@@ -16,6 +16,7 @@
 #include<sys/wait.h>
 
 void execute(char **argv);
+void executeWOorder(char ** argv);
 
 int main()
 {
@@ -31,8 +32,11 @@ int main()
   int redirIcount = 0;
   int errorOnLine = 0;
   int expFile = 0;
+  char** argsv[64];
   char* args[64];
   int argsc = 0;
+  int argsvc = 0;
+  int ampFound = 0;
   printf("$> ");
   while(1) {
     errorOnLine = 0;
@@ -81,10 +85,23 @@ int main()
               errorOnLine = 1;
               break;
           }
-          printf(" ;\n");
+          argsv[argsvc] = malloc(sizeof(args));
+          for(int i = 0; i < argsc; i++){
+              argsv[argsvc][i] = malloc(strlen(args[i])+1);
+              for(int j = 0; j < strlen(args[i]); j++){
+                argsv[argsvc][i][j] = args[i][j];
+              }
+              argsv[argsvc][i][strlen(args[i])+1] = '\0';
+          }
+          argsvc++;
+          for(int i = 0; i < argsc; i++){
+              args[i] = '\0';
+          }
+          argsc = 0;
           command = 0;
           redirCount = 0;
           redirIcount = 0;
+          ampFound = 0;
           break;
         case PIPE:
           if(expFile){
@@ -92,12 +109,24 @@ int main()
               errorOnLine = 1;
               break;
           }
-          if(!command){
+          if(!command || ampFound){
               printf("syntax error near '|'");
               errorOnLine = 1;
               break;
           }
-          printf(" |\n");
+          argsv[argsvc] = malloc(sizeof(args));
+          for(int i = 0; i < argsc; i++){
+              argsv[argsvc][i] = malloc(strlen(args[i])+1);
+              for(int j = 0; j < strlen(args[i]); j++){
+                argsv[argsvc][i][j] = args[i][j];
+              }
+              argsv[argsvc][i][strlen(args[i])+1] = '\0';
+          }
+          argsvc++;
+          for(int i = 0; i < argsc; i++){
+              args[i] = '\0';
+          }
+          argsc = 0;
           command = 0;
           redirCount = 0;
           redirIcount = 0;
@@ -108,7 +137,7 @@ int main()
               errorOnLine = 1;
               break;
           }
-          printf(" &\n");
+          ampFound = 1;
           break;
         case REDIR_OUT:
           if(!command){
@@ -127,7 +156,6 @@ int main()
               break;
           }
           else{
-              printf(" >\n");
               redirCount = 1;
               expFile = 1;
               break;
@@ -149,7 +177,6 @@ int main()
               break;
           }
           else{
-              printf(" <\n");
               redirIcount = 1;
               expFile = 1;
               break;
@@ -160,7 +187,6 @@ int main()
               errorOnLine = 1;
               break;
           }
-          printf(" >>\n");
           break;
         case ERROR_CHAR:
           printf("error char: %d",error_char);
@@ -176,7 +202,6 @@ int main()
               errorOnLine = 1;
               break;
           }
-          printf(" 2>>\n");
           break;
         case REDIR_ERR_OUT:
           if(expFile){
@@ -184,7 +209,6 @@ int main()
               errorOnLine = 1;
               break;
           }
-          printf(" 2>&1\n");
           break;
         case REDIR_ERR:
            if(expFile){
@@ -192,7 +216,6 @@ int main()
               errorOnLine = 1;
               break;
           }
-          printf(" 2>\n");
           break;
         case SYSTEM_ERROR:
           perror("system error");
@@ -207,17 +230,49 @@ int main()
         if(expFile){
             printf("missing filename after redirection");
             errorOnLine = 1;
+            argsc = 0;
+            argsc = 0;
+            command = 0;
+            ampFound = 0;
+            printf("\n$> ");
+            for(int i = 0; i<= argsc; i++){
+                args[i] = '\0';
+            }
+            for(int i = 0; i<= argsvc; i++){
+                argsv[i] = '\0';
+            }
         }
         else{
             args[argsc] = '\0';
-            execute(args);
+            argsv[argsvc] = args;
+            for(int i = 0; i <= argsvc; i++){
+                execute(argsv[i]);
+            }
             printf("$> ");
             for(int i = 0; i <= argsc; i++){
                 args[i] = '\0';
             }
+            for(int i = 0; i<= argsvc; i++){
+                argsv[i] = '\0';
+            }
             argsc = 0;
+            argsvc = 0;
+            ampFound = 0;
         }
         command = 0;
+    }
+    else{
+        command = 0;
+        printf("\n$> ");
+        for(int i = 0; i <= argsc; i++){
+            args[i] = '\0';
+        }
+        for(int i = 0; i<= argsvc; i++){
+            argsv[i] = '\0';
+        }
+        argsc = 0;
+        argsvc = 0;
+        ampFound = 0;
     }
   }
 }
@@ -235,6 +290,18 @@ void execute(char** args){
     }
     if(pid > 0){
         wait(&stat);
+    }
+}
+
+void executeWOorder(char** args){
+    pid_t pid;
+    pid = fork();
+    if(pid == 0){
+        if(execvp(*args, args) < 0){
+            printf("wyshell: %s: command not found\n", args[0]);
+            exit(1);
+        }
+        exit(0);
     }
 }
 
