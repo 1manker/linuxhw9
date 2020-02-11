@@ -1,7 +1,7 @@
 /*************************************
  * wyshell.c
  * Author: Lucas Manker
- * Date: 10 April 2020
+ * Date: 20 April 2020
  *
  * scanner for 3750 wyshell project.
  * Parts of this code graciously provided by Dr. Buckner
@@ -9,7 +9,13 @@
 
 #include<stdio.h>
 #include"wyscanner.h"
+#include<sys/types.h>
+#include<stdlib.h>
+#include<string.h>
+#include<unistd.h>
+#include<sys/wait.h>
 
+void execute(char **argv);
 
 int main()
 {
@@ -20,16 +26,15 @@ int main()
   int rtn;
   char *rpt;
   char buf[1024];
-  char *start = ":--:";
-  char *inner = " --:";
   int command = 0;
   int redirCount = 0;
   int redirIcount = 0;
   int errorOnLine = 0;
   int expFile = 0;
-
+  char* args[64];
+  int argsc = 0;
+  printf("$> ");
   while(1) {
-    printf("$> ");
     errorOnLine = 0;
     redirCount = 0;
     redirIcount = 0;
@@ -52,11 +57,22 @@ int main()
               expFile = 0;
           }
           if(!command){
-            printf("%s %s\n",start,lexeme);
+            args[argsc] = malloc(strlen(lexeme)+1);
+            for(int i = 0; i < strlen(lexeme); i++){
+                args[argsc][i] = lexeme[i];
+            }
+            args[argsc][strlen(lexeme)+1]='\0';
             command = 1;
+            argsc++;
+            break;
           }
           else{
-              printf("%s %s\n",inner,lexeme);
+            args[argsc] = malloc(strlen(lexeme)+1);
+            for(int i = 0; i < strlen(lexeme); i++){
+                args[argsc][i] = lexeme[i];
+            }
+            args[argsc][strlen(lexeme)+1]='\0';            
+            argsc++;
           }
           break;
         case SEMICOLON:
@@ -193,11 +209,47 @@ int main()
             errorOnLine = 1;
         }
         else{
-            printf("%s EOL", inner);
+            args[argsc] = '\0';
+            execute(args);
+            printf("$> ");
+            for(int i = 0; i <= argsc; i++){
+                args[i] = '\0';
+            }
+            argsc = 0;
         }
         command = 0;
     }
-    printf("\n");
   }
 }
+
+void execute(char** args){
+    pid_t pid;
+    int stat;
+    pid = fork();
+    if(pid ==0){
+        if(execvp(*args, args) < 0){
+            printf("wyshell: %s: command not found\n",args[0]);
+            exit(1);
+        }
+        exit(0);
+    }
+    if(pid > 0){
+        wait(&stat);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

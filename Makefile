@@ -3,13 +3,13 @@
 #Lucas Manker
 #COSC 3750 Spring 2020
 #Homework #8
-#4/10/20
+#4/20/20
 #
-#Makefile for hw8
+#Makefile for hw9
 ###########
 
 CC=gcc
-CFLAGS=-ggdb -Wall -Wno-unused-function
+CFLAGS=-ggdb -Wall -Wno-unused-function 
 
 .PHONY: clean
 
